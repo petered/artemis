@@ -266,7 +266,7 @@ class OptionalParameterSelectionFrame(IParameterSelectionFrame[Optional[Any]]):
             self._child_frame.grid(column=1, row=0, sticky="ew")
         else:
             self._child_frame.grid_forget()
-        self.update()
+        self.update_idletasks()
 
     def get_filled_parameters(self) -> Optional[Any]:
         return self._child_frame.get_filled_parameters() if self._checkbox_var.get() else None
@@ -297,7 +297,7 @@ class FolderParameterSelectionFrame(IParameterSelectionFrame[str]):
 
     def _rebuild_folder_label(self):
         self._folder_label.configure(text=self.var.get() if self.var.get() else "<No folder selected>")
-        self.update()
+        self.update_idletasks()
 
     def get_filled_parameters(self) -> Optional[str]:
         return self.var.get()
@@ -365,7 +365,7 @@ class FileListParameterSelectionFrame(IParameterSelectionFrame[Sequence[str]]):
         for file in rel_paths:
             self._filelist.insert(tk.END, file)
         # Display
-        self.update()
+        self.update_idletasks()
 
 
 
@@ -753,12 +753,11 @@ class ParameterSelectionFrame(tk.Frame):
 
                  **kwargs):
         super().__init__(master, **kwargs)
-
+        self._disable_setting_parameters = False
         self._param_frame: Optional[IParameterSelectionFrame] = None
         if builder is not None:
             self.set_parameters(builder)
         self._traces = {}
-        self._disable_setting_parameters = False
         # self._on_change_callback = on_change_callback
 
     def reset_frame(self):
@@ -778,7 +777,7 @@ class ParameterSelectionFrame(tk.Frame):
             # self._param_frame.pack_forget()
             self._param_frame.destroy()
         self._param_frame = None
-        # self.update()
+        # self.update_idletasks()
 
     @contextmanager
     def _hold_prevent_recurse(self):
@@ -821,7 +820,7 @@ class ParameterSelectionFrame(tk.Frame):
             if first_editable_field is not None:
                 first_editable_field.focus_set()
             self._param_frame.pack(fill=tk.BOTH, expand=True)
-            self.update()  # Needed to ensure things actually display off the start
+            self.update_idletasks()  # Needed to ensure things actually display off the start
 
     def get_filled_parameters(self) -> Optional[ParametersType]:
         return self._param_frame.get_filled_parameters() if self._param_frame is not None else None
