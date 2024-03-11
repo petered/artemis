@@ -61,6 +61,16 @@ def copy_creating_dir_if_needed(src_path: str, dest_path: str):
     shutil.copy2(src_path, dest_path)
 
 
+def flip_bit_in_file(path: str, bit_index: int):
+    if bit_index < 0:
+        n_bits = os.path.getsize(path) * 8
+        bit_index = n_bits + bit_index
+    with open(path, 'r+b') as f:
+        f.seek(bit_index//8)
+        byte = f.read(1)[0]
+        f.seek(bit_index//8)
+        f.write(bytes([byte ^ (1 << (bit_index % 8))]))
+
 def copy_file_with_mtime(src, dest, overwrite: bool = True, create_dir_if_needed: bool = True):
     """
     Copies a file from src to dest, preserving the file's modification time,
