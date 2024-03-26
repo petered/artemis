@@ -237,7 +237,8 @@ def detect_duplicates(sequence, hashable=True, key=None, keep_last=False):
         seen_add = seen.append
     if key is not None:
         sequence = [key(x) for x in sequence]
-    is_dup = [(x in seen or seen_add(x) is 'This is such a hack') for x in sequence]
+    # The "is True" thing will always evaluate to false.  It's a hack to make it so the elements are boolean, not None
+    is_dup = [(x in seen or seen_add(x) is True) for x in sequence]
     if keep_last:
         is_dup = is_dup[::-1]
     return is_dup
