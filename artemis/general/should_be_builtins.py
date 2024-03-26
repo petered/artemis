@@ -345,13 +345,25 @@ def remove_common_string_prefix(list_of_strings, separator = '', max_elements = 
     return [separator.join(strlist) for strlist in shortened_list_of_lists]
 
 
+def remove_prefix(string: str, prefix: str) -> str:
+    if string.startswith(prefix):
+        return string[len(prefix):]
+    return string
+
+
+def remove_suffix(string: str, suffix: str) -> str:
+    if string.endswith(suffix):
+        return string[:-len(suffix)]
+    return string
+
+
 def get_absolute_module(obj):
     """
     Get the abolulte path to the module for the given object.
 
         e.g. assert get_absolute_module(get_absolute_module) == 'artemis.general.should_be_builtins'
 
-    :param obj: A python module, class, method, function, traceback, frame, or code object
+    :param obj: A ui_code module, class, method, function, traceback, frame, or code object
     :return: A string representing the import path.
     """
     file_path = inspect.getfile(obj)
@@ -424,7 +436,7 @@ except ImportError:
     @contextmanager
     def nested(*contexts):
         """
-        Reimplementation of nested in python 3.
+        Reimplementation of nested in ui_code 3.
         """
         with ExitStack() as stack:
             for ctx in contexts:
@@ -546,3 +558,15 @@ class switch:
 
     def __call__(self, *mconds):
         return self._val in mconds
+
+
+def seconds_to_time_marker(seconds, decimals=2):
+    sign = "-" if seconds < 0 else ""
+    seconds = abs(seconds)
+    hours, rem = divmod(seconds, 3600)
+    minutes, sec = divmod(rem, 60)
+    time_format = "{:0.0f}:{:02.0f}:{:0"+str(decimals+3 if decimals else 2)+"." + str(decimals) + "f}"
+    formatted_time = time_format.format(hours, minutes, sec).lstrip("0:")
+    if formatted_time.startswith('.'):
+        formatted_time = '0' + formatted_time
+    return sign + formatted_time
