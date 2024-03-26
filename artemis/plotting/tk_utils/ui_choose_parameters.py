@@ -148,12 +148,11 @@ class AddedWidgetParameterSelectionFrame(IParameterSelectionFrame[ParametersType
         return self._child.get_variables()
 
 
-
 class BooleanParameterSelectionFrame(IParameterSelectionFrame[bool]):
 
     def __init__(self, master: tk.Widget, builder: 'ParameterUIBuilder'):
         super().__init__(master, **builder.general_kwargs)
-        self.var = tk.BooleanVar(master=self, value=self._builder.initial_value)
+        self.var = tk.BooleanVar(master=self, value=builder.initial_value)
         check_box = tk.Checkbutton(self, variable=self.var, state=tk.NORMAL if builder.editable_fields else tk.DISABLED)
         check_box.grid(column=0, row=0, sticky="w")
 

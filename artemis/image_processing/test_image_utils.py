@@ -151,8 +151,8 @@ def test_image_view_info(show: bool = False):
         just_show(display_img, hang_time=10)
 
 
-from video_scanner.general_utils.file_utils import imread_any_path
-from video_scanner.general_utils.utils_for_app_testing import DroneDataDirectory
+from image_annotation.file_utils import imread_any_path
+from image_annotation.file_utils import DroneDataDirectory
 
 
 def test_read_file_with_cyrillic_path():

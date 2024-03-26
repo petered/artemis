@@ -605,7 +605,7 @@ def hold_toplevel_centered(parent: Optional[tk.Widget], *args, **kwargs):
 
 def toplevel_centered(parent: Optional[tk.Widget] = None, *args, **kwargs):
     """ Create a toplevel window, and center it on the parent widget after its contents are filled in"""
-    top = tk.Toplevel(master=parent, *args, **kwargs)
+    top = tk.Toplevel(master=parent, *args, **kwargs) if parent is not None else tk.Toplevel(*args, **kwargs)
     if parent is not None:
         parent_top = parent.winfo_toplevel()
         top.geometry(f"+{int(parent_top.winfo_rootx() + parent_top.winfo_width() / 2 )}+"

@@ -392,7 +392,8 @@ def get_time_ordered_image_paths(image_paths: Sequence[str], fallback_fps: float
     if any(t is None for t in image_times):
         image_times = [i / fallback_fps for i in range(len(image_paths))]
     ixs = np.argsort(image_times)
-    return [image_paths[ix] for ix in ixs], image_times[ixs]
+    start_time = image_times[ixs[0]] if image_times[ixs[0]] is not None else 0
+    return [image_paths[ix] for ix in ixs], [image_times[ix]-start_time for ix in ixs]
 
 
 @dataclass
@@ -401,6 +402,7 @@ class ImageSequenceReader(IVideoReader):
 
     def __init__(self,
                  image_paths: Sequence[str],
+                 image_times: Optional[Sequence[float]] = None,
                  fallback_fps: float = 1.,
                  reorder = False,
                  new_file_checker: Optional[Callable[[], Sequence[str]]] = None,
@@ -408,11 +410,18 @@ class ImageSequenceReader(IVideoReader):
                  geodata_reader: Callable[[str], FrameGeoData] = read_image_geodata_or_none
                  ):
         self._image_paths = image_paths
-        if reorder:
-            image_paths, self._image_times = get_time_ordered_image_paths(image_paths, fallback_fps)
-            self._image_paths = list(image_paths)
+        if image_times is not None:
+            assert len(image_times) == len(image_paths), "If you provide image_times, it must be the same length as image_paths"
+            first_time = first((t for t in image_times), default=0)
+            self._image_times = [t-first_time for t in image_times]
         else:
             self._image_times = [i / fallback_fps for i in range(len(image_paths))]
+        if reorder:
+            assert image_times is not None, "If you want to reorder, you must provide image_times"
+            # image_paths, self._image_times = get_time_ordered_image_paths(image_paths, fallback_fps)
+            sorting_ixs = np.argsort(image_times)
+            self._image_paths = [image_paths[ix] for ix in sorting_ixs]
+            self._image_times = [image_times[ix] for ix in sorting_ixs]
         self._new_file_checker = new_file_checker
         self._fallback_fps = fallback_fps
         self._cache = CacheDict(buffer_length=cache_size)
@@ -499,7 +508,7 @@ class ImageSequenceReader(IVideoReader):
                 if not self.is_live():
                     break
                 i = self.get_n_frames()
-                time.sleep(0.1)
+                # time.sleep(0.1)
 
     def cut(self, time_interval: TimeIntervalTuple = (None, None), frame_interval: Tuple[Optional[int], Optional[int]] = (None, None)) -> 'ImageSequenceReader':
         if time_interval[0] is not None:
