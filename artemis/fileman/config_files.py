@@ -87,7 +87,7 @@ def _get_config_object(config_path, use_cashed_config=True):
     if config_path not in _CONFIG_OBJECTS or not use_cashed_config:
         config = ConfigParser()
         if not os.path.exists(config_path):
-            with open(config_path,'w') as f:
+            with open(config_path,'w', encoding='utf-8') as f:
                 config.write(f)
         else:
             config.read(config_path)
