@@ -5,6 +5,7 @@
 import time
 import tkinter as tk
 from contextlib import contextmanager
+from enum import Enum
 from math import copysign
 from tkinter import EventType, Event
 from typing import Optional, Tuple, Callable, Mapping, Dict, List
@@ -25,6 +26,12 @@ import os
 IS_WINDOWS = os.name == 'nt'
 
 MODIFIER_KEY = 'Control' if IS_WINDOWS else 'Command'
+
+
+class DragTypes(Enum):
+    IMAGE = 'image'  # Regular drag on image
+    VSCROLL = 'vscroll'  # Drag on vertical scrollbar
+    HSCROLL = 'hscroll'  # Drag on horizontal scrollbar
 
 
 class ZoomableImageFrame(tk.Label):
@@ -80,6 +87,7 @@ class ZoomableImageFrame(tk.Label):
         self._zoom_scrolling_mode = zoom_scrolling_mode
         self._max_zoom = max_zoom
         self._drag_start_display_xy: Optional[Tuple[int, int]] = None
+        self._drag_start_type: Optional[DragTypes] = None  # Keeps track of where drag started
         self._image: Optional[BGRImageArray] = None
         self._is_configuration_still_being_negotiated = True
         if image is not None:
@@ -175,17 +183,34 @@ class ZoomableImageFrame(tk.Label):
 
         is_drag = event.type == EventType.Motion
         is_release = event.type == EventType.ButtonRelease
+        is_along_vscroll_bar = self.winfo_width()-self._scroll_indicator_width_pix <= event.x <= self.winfo_width()
+        is_along_hscroll_bar = self.winfo_height()-self._scroll_indicator_width_pix <= event.y <= self.winfo_height()
         if is_drag:
             if self._drag_start_display_xy is None:
                 self._drag_start_display_xy = self._event_to_display_xy(event)
+                self._drag_start_type = DragTypes.VSCROLL if is_along_vscroll_bar else DragTypes.HSCROLL if is_along_hscroll_bar else DragTypes.IMAGE
             else:
                 display_xy = self._event_to_display_xy(event)
-                display_rel_xy = self._drag_start_display_xy[0]-display_xy[0], self._drag_start_display_xy[1]-display_xy[1]
-                self._drag_start_display_xy = display_xy
-                new_frame = self._image_view_frame.pan_by_display_shift(display_shift_xy=display_rel_xy, limit=True)
+                if self._drag_start_type == DragTypes.IMAGE:
+                    display_rel_xy = self._drag_start_display_xy[0]-display_xy[0], self._drag_start_display_xy[1]-display_xy[1]
+                    self._drag_start_display_xy = display_xy
+                    new_frame = self._image_view_frame.pan_by_display_shift(display_shift_xy=display_rel_xy, limit=True)
+                else:
+                    old_x_pix, old_y_pix = self._image_view_frame.center_pixel_xy
+                    # old_x_pix, old_y_pix = self._image_view_frame.display_xy_to_pixel_xy(self._drag_start_display_xy)
+                    current_zoom_level = self._image_view_frame.zoom_level
+                    if self._drag_start_type == DragTypes.VSCROLL:
+                        new_y_pix = int(self._image_view_frame.image_wh[1] * display_xy[1] / (self.winfo_height() - self._scroll_indicator_width_pix))
+                        new_xy_pix = old_x_pix, new_y_pix
+                    elif self._drag_start_type == DragTypes.HSCROLL:
+                        new_x_pix = int(self._image_view_frame.image_wh[0] * display_xy[0] / (self.winfo_width() - self._scroll_indicator_width_pix))
+                        new_xy_pix = new_x_pix, old_y_pix
+                    new_frame = self._image_view_frame.zoom_to_pixel(pixel_xy=new_xy_pix, zoom_level=current_zoom_level).adjust_pan_to_boundary()
+
                 self.set_image_frame(new_frame)
         elif is_release:
             self._drag_start_display_xy = None
+            self._drag_start_type = None
 
     def _on_click(self, event: Event):
         # Never gets called for some reason

@@ -420,8 +420,8 @@ class ImageSequenceReader(IVideoReader):
             assert image_times is not None, "If you want to reorder, you must provide image_times"
             # image_paths, self._image_times = get_time_ordered_image_paths(image_paths, fallback_fps)
             sorting_ixs = np.argsort(image_times)
-            self._image_paths = [image_paths[ix] for ix in sorting_ixs]
-            self._image_times = [image_times[ix] for ix in sorting_ixs]
+            self._image_paths = [self._image_paths[ix] for ix in sorting_ixs]
+            self._image_times = [self._image_times[ix] for ix in sorting_ixs]
         self._new_file_checker = new_file_checker
         self._fallback_fps = fallback_fps
         self._cache = CacheDict(buffer_length=cache_size)

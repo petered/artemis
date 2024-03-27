@@ -676,71 +676,63 @@ class ParameterUIBuilder:
         #     return frame
         return frame
 
+    def open_parameter_selection_dialog(
+            self,
+            parent: Optional[tk.Widget] = None,
+            timeout: Optional[float] = None,
+            title: str = "Select Parameters",
+    ) -> Optional[ParametersType]:
 
-# def build_parameter_frame(
-#         parent: tk.Widget,
-#         param_type: Optional[type],
-#         initial_value: Any,
-#         editable_fields: Union[bool, Sequence[str]] = True,
-#         extra_widget_builders = {},
-#         # on_change_callback: Optional[Callable[[Tuple[Union[str, int]], tk.Variable], None]] = None,
-#         **kwargs
-#     ) -> IParameterSelectionFrame:
-#     """
-#     Build a TKinter frame that lets you view and edit parameters.
-#
-#     :param parent: The parent widget
-#     :param param_type: The type of the parameter.  If None, initial_value must be provided.
-#     :param initial_value: The initial value to display.  If None, param_type must be provided.
-#     :param editable_fields: Either
-#         - True: All fields (or THE field if it is a single value) are editable
-#         - False: All fields (or THE field if it is a single value) are NOT editable
-#         - A sequence of strings: Only the fields with those names are editable.
-#           The strings can be nested, e.g. "a.b.c" will make the "c" field of the "b" field of the "a" field editable.
-#           "*" in the nested strings means "all fields", e.g. "a.*.c" will make the "c" field of all the "a" fields editable.
-#         - EMPTY: No fields are editable (same as False)
-#     :param on_change_callback: A callback in the form f(path, variable) that will be called whenever a field changes.
-#         The path is a tuple of strings and ints that describes the path to the variable, e.g. ("a", 1, "b") means the
-#         variable is the "b" field of the 1st element of the "a" field.  The variable is the tk.Variable that was changed.
-#     :param kwargs:
-#     :return:
-#     """
-#     if param_type is None:
-#         assert initial_value is not None, "If params_type is None, initial_value must be provided."
-#         param_type = type(initial_value)
-#
-#     is_leaf_param = param_type in [str, int, float, bool]
-#
-#     if is_leaf_param:  # It's just a single value we don't have to think about whether to break in
-#         if not editable_fields:  # If we're not editing anything, just show the value
-#             frame = UneditableParameterSelectionFrame(parent, param_type, initial_value, **kwargs)
-#         elif param_type == bool:  # Start with shallow objects
-#             frame = BooleanParameterSelectionFrame(parent, initial_value, **kwargs)
-#         elif param_type == str or param_type == int or param_type == float:
-#             frame = EntryParameterSelectionFrame(parent, param_type, initial_value, **kwargs)
-#         else:
-#             raise NotImplementedError(f"Type {param_type} not supported.")
-#     else:  # We need to break in
-#         # If we're not editing anything, just show the value
-#         if editable_fields is False:
-#             frame = UneditableParameterSelectionFrame(parent, param_type, initial_value, **kwargs)
-#         elif editable_fields is True or '' in editable_fields:  # If we're editing everything, or the top-level object, then we can edit it
-#             return ButtonParameterSelectionFrame(parent, param_type, initial_value, editable_fields=editable_fields, **kwargs)
-#         elif isinstance(get_origin(param_type), type) and issubclass(get_origin(param_type), Sequence):  # Now nested objects
-#             frame = SequenceParameterSelectionFrame(parent, get_args(param_type)[0], initial_value, editable_fields=editable_fields, **kwargs)
-#         elif isinstance(get_origin(param_type), type) and is_optional_type(param_type):
-#             frame = OptionalParameterSelectionFrame(parent, get_args(param_type)[0], initial_value, editable_fields=editable_fields, **kwargs)
-#         elif hasattr(param_type, "__dataclass_fields__"):
-#             frame = DataclassParameterSelectionFrame(parent, param_type, initial_value, editable_fields=editable_fields, **kwargs)
-#         elif is_optional_type(param_type):
-#             frame = OptionalParameterSelectionFrame(parent, get_args(param_type)[0], initial_value, editable_fields=editable_fields, **kwargs)
-#         else:
-#             raise NotImplementedError(f"Type {param_type} not supported.")
-#
-#     # Thin outline, align to top-left
-#     # frame.configure(borderwidth=1, relief=tk.SOLID, highlightthickness=1, highlightbackground=ThemeColours.HIGHLIGHT_COLOR)
-#
-#     return frame
+        window = tk.Toplevel(parent) if parent is not None else tk.Toplevel()
+        window.title("Select Detection Run Specification")
+        window.transient(parent)  # Set the dialog window as transient relative to the parent
+        window.grab_set()  # Make the dialog modal
+
+        # Minimum size
+        # window.minsize(600, 300)
+        window.title(title)
+        ps_frame = self.build_parameter_frame(window)
+        # ps_frame = build_parameter_frame(window, params_type, initial_params, editable_fields=editable_fields)
+        ps_frame.pack(fill=tk.BOTH, expand=True)
+        bottom_panel = ButtonPanel(window)
+
+        final_params = None
+
+        def on_cancel():
+            nonlocal final_params
+            final_params = None
+            window.destroy()
+
+        def on_ok():
+            nonlocal final_params
+            final_params = ps_frame.get_filled_parameters()
+            window.destroy()
+
+        def on_reset():
+            nonlocal ps_frame
+            ps_frame.pack_forget()
+            # ps_frame = build_parameter_frame(window, params_type, factory_reset_params, editable_fields=editable_fields)
+            ps_frame = self.build_parameter_frame()
+            ps_frame.pack()
+
+        bottom_panel.pack(side=tk.BOTTOM, fill=tk.X)
+        if self.editable_fields:
+            bottom_panel.add_button("Cancel", on_cancel, shortcut="<Escape>")
+            bottom_panel.add_button("Reset", on_reset, shortcut="<Control-r>")
+        bottom_panel.add_button("OK", on_ok, shortcut="<Return>")
+
+        if timeout is not None:
+            window.after(int(timeout * 1000), on_ok)
+        # root.mainloop()
+
+        # Trigger a Tab event in 100ms to focus the first field
+        # Focus on the window
+        window.grab_set()
+        window.after(100, lambda: window.event_generate("<Tab>"))
+
+        window.focus_force()
+        window.wait_window()
+        return final_params
 
 
 class ParameterSelectionFrame(tk.Frame):
@@ -828,277 +820,14 @@ class ParameterSelectionFrame(tk.Frame):
         return self._param_frame.get_variables() if self._param_frame is not None else {}
 
 
-# class ParameterSelectionFrame(tk.Frame):
-#
-#     def __init__(self, parent,
-#                  title: str = "Select Parameters",
-#                  prompt: str = "",
-#                  include_buttons: bool = False,
-#                  on_change_callback: Optional[Callable[[ParametersType], None]] = None,
-#                  **kwargs):
-#         super().__init__(parent, **kwargs)
-#         self.params_type = None
-#         self.var: Dict[str, tk.Variable] = {}  #
-#         self.initial_params = None
-#         self.factory_reset_params = None
-#         self._editable_fields: Optional[Sequence[str]] = None
-#         self._on_change_callback = on_change_callback
-#
-#         self._param_frame = tk.Frame(self)
-#         self._param_frame.pack(side=tk.TOP, fill=tk.BOTH, expand=True)
-#         # Configure grid to take up all available space
-#         self._param_frame.columnconfigure(0, weight=0)
-#         self._param_frame.columnconfigure(1, weight=3)
-#         self._param_frame.rowconfigure(1, weight=1)
-#         tk.Label(self._param_frame, text=prompt).grid(column=0, row=0, columnspan=3)
-#
-#         if include_buttons:
-#             button_panel = ButtonPanel(self)
-#             button_panel.pack(side=tk.BOTTOM, fill=tk.X)
-#             button_panel.add_button("Cancel", self._on_cancel, shortcut="<Escape>")
-#             button_panel.add_button("OK", self._on_ok, shortcut="<Return>")
-#             button_panel.add_button("Reset", self._on_reset, shortcut="<Control-r>")
-#
-#
-#
-#
-#
-#
-#         # if include_exit_button:
-#         #     bottom_frame = tk.Frame(self)
-#         #     bottom_frame.pack(side=tk.BOTTOM, fill=tk.X)
-#         #
-#         #     tk.Button(bottom_frame, text="Cancel", command=self.master.destroy).pack(side=tk.RIGHT)
-#         #     tk.Button(bottom_frame, text="OK", command=self.master.destroy).pack(side=tk.RIGHT)
-#         #
-#     def _on_cancel(self):
-#         self.set_parameters(params_type=self.params_type, initial_params=self.initial_params, factory_reset_params=self.factory_reset_params)
-#         self.master.destroy()
-#
-#     def _on_ok(self):
-#         self.master.destroy()
-#
-#     def _on_reset(self):
-#         self.set_parameters(params_type=self.params_type, initial_params=self.factory_reset_params, factory_reset_params=self.factory_reset_params)
-#
-#     def set_parameters(self,
-#                        params_type: Optional[type] = None,
-#                        initial_params: Optional[ParametersType] = None,
-#                        factory_reset_params: Optional[ParametersType] = None,
-#                        editable_fields: Optional[Sequence[str]] = None,  # Note means "all", ok?
-#                        ):
-#
-#         if params_type is None:
-#             assert initial_params is not None, "If params_type is None, initial_params must be provided."
-#             params_type = type(initial_params)
-#
-#         self.params_type = params_type
-#         self.initial_params = initial_params
-#         self.factory_reset_params = factory_reset_params
-#         self._editable_fields = editable_fields
-#
-#
-#
-#
-#         self._recreate_fields()
-#
-#     def set_field_value(self, field_name: str, value: Any, field_collection_index: Optional[int] = None):
-#         if field_collection_index is None:
-#             self.var[field_name].set(value)
-#         else:
-#             self.var[field_name].get()[field_collection_index] = value
-#
-#     def _recreate_fields(self, ):
-#
-#         # First, clear any existing fields
-#         for child in self._param_frame.winfo_children():
-#             child.destroy()
-#         if self.params_type is None:
-#             return
-#         for i, f in enumerate(fields(self.params_type), start=1):
-#             # if editable_field_names is None or f.name in editable_field_names:
-#             self._create_field_ui(f, i, editable=f.name in self._editable_fields if self._editable_fields is not None else True)
-#             # else:
-#
-#     def _create_field_ui(self, f, row: int, editable: bool = True):
-#         label = tk.Label(self._param_frame, text=f.metadata['name'] if 'name' in f.metadata else f.name.replace("_", " ").capitalize() + ":")
-#         create_tooltip(label, f.metadata.get("help", "No help available."), background=ThemeColours.HIGHLIGHT_COLOR)
-#         label.grid(column=0, row=row)
-#
-#         initial_value = getattr(self.initial_params, f.name) if self.initial_params else f.default
-#         factory_value = getattr(self.factory_reset_params, f.name) if self.factory_reset_params else None
-#         value_to_set = factory_value if factory_value is not None else initial_value
-#
-#         if isinstance(get_origin(f.type), type) and issubclass(get_origin(f.type), Sequence):
-#
-#             # Just add a bunch of string fields in a single frame
-#             frame = tk.Frame(self._param_frame)
-#             frame.grid(column=1, row=row, sticky="ew")
-#             self.var[f.name] = MockVariable(value=list(value_to_set))
-#             self._bind_post_write_callback(self.var[f.name])
-#             element_frame = tk.Frame(self._param_frame)
-#             element_frame.grid(column=1, row=row, sticky="ew")
-#             for i, item in enumerate(value_to_set):
-#                 # var = tk.StringVar(value=item)
-#                 # entry = tk.Entry(frame, textvariable=var, state='readonly')
-#                 # entry.grid(column=1, row=i, sticky="ew")
-#                 # self.var[f.name] = var
-#                 # just make a label
-#                 if editable:
-#                     label = RespectableLabel(element_frame, text=str(item), anchor=tk.W)
-#                     label.set_command(lambda n=f.name, i=i, label=label: self._edit_subfield(label, n, i))
-#                 else:
-#                     label = RespectableLabel(element_frame, text=str(item), anchor=tk.W)
-#
-#                 label.grid(column=0, row=i, sticky="ew")
-#                 if editable:  # Add a garbage-bin button to the right to delete the annotation
-#                     delete_button = RespectableLabel(element_frame, text="🗑", command=lambda n=f.name, i=i, label=label, : self._delete_subfield(label, n, i))
-#                     delete_button.grid(column=1, row=i, sticky="ew")
-#
-#
-#         else:
-#
-#             if editable:
-#                 if f.type == str:
-#                     self._create_string_field(f, row, value_to_set)
-#                 elif f.type == bool:
-#                     self._create_boolean_field(f, row, value_to_set)
-#                 elif f.type in [int, float]:
-#                     self._create_numeric_field(f, row, value_to_set)
-#                 else:
-#                     raise NotImplementedError(f"Type {f.type} not supported.")
-#             else:
-#                 label = RespectableLabel(self._param_frame, text=str(value_to_set), anchor=tk.W)
-#                 label.grid(column=1, row=row, sticky="ew")
-#
-#     def _edit_subfield(self, label: tk.Label, field_name: str, field_collection_index: Optional[int] = None):
-#         """ Edit a subfield of a field that is a sequence. """
-#         current_field_object = self.var[field_name].get() if field_collection_index is None else self.var[field_name].get()[field_collection_index]
-#         new_object = ui_choose_parameters(params_type=type(current_field_object), initial_params=current_field_object)
-#         self.set_field_value(field_name, new_object, field_collection_index)
-#         label.configure(text=str(new_object))
-#
-#     def _delete_subfield(self, label: tk.Label, field_name: str, field_collection_index: int):
-#         """ Delete a subfield of a field that is a sequence. """
-#         del self.var[field_name].get()[field_collection_index]
-#         label.master.destroy()
-#         self._on_change_callback(self.get_filled_parameters())
-#
-#     def _bind_post_write_callback(self, var: tk.Variable):
-#         if self._on_change_callback is not None:
-#             var.trace_add("write", lambda *args, var=var: self._on_change_callback(self.get_filled_parameters()))
-#
-#     def _create_string_field(self, f, row, initial_value):
-#         var = tk.StringVar(value=initial_value)
-#         entry = tk.Entry(self._param_frame, textvariable=var)
-#         entry.grid(column=1, row=row, sticky="ew")
-#         self.var[f.name] = var
-#         # Link to change callback
-#         self._bind_post_write_callback(var)
-#
-#     def _create_boolean_field(self, f, row, initial_value):
-#         var = tk.BooleanVar(value=initial_value)
-#         check_box = tk.Checkbutton(self._param_frame, variable=var)
-#         check_box.grid(column=1, row=row, sticky="w")
-#         self.var[f.name] = var
-#         self._bind_post_write_callback(var)
-#
-#     def _create_numeric_field(self, f, row, initial_value):
-#         if f.type == int:
-#             var = tk.IntVar(value=initial_value)
-#         else:  # f.type == float
-#             var = tk.DoubleVar(value=initial_value)
-#         entry = tk.Entry(self._param_frame, textvariable=var)
-#         entry.grid(column=1, row=row, sticky="ew")
-#         self.var[f.name] = var
-#         self._bind_post_write_callback(var)
-#
-#     def get_filled_parameters(self) -> Optional[ParametersType]:
-#         try:
-#             settings_dict = {f.name: self.var[f.name].get() if isinstance(self.var[f.name], tk.Variable) else self.var[f.name]
-#                              for f in fields(self.params_type) if f.name in self._editable_fields}
-#             return replace(self.initial_params, **settings_dict)
-#         except Exception as e:
-#             messagebox.showerror("Error", f"Error reading settings from UI:\n\n{e}\n\n(see Log)")
-#             return None
-
-
 def ui_choose_parameters(
         builder: ParameterUIBuilder,
-        # params_type: Optional[type] = None,
-        # initial_params: Optional[ParametersType] = None,
-        # factory_reset_params: Optional[ParametersType] = None,
         parent: Optional[tk.Widget] = None,
         timeout: Optional[float] = None,
         title: str = "Select Parameters",
-        # editable_fields: Union[bool, Sequence[str]] = True,
-        prompt: str = "Hover mouse over for description of each parameter.  Tab to switch fields, Enter to accept, Escape to cancel."
 ) -> Optional[ParametersType]:
-    # with hold_tkinter_root_context() as root:
-    #
-    # params_type: Optional[type] = None,
-    # initial_params: Optional[ParametersType] = None,
-    # editable_fields: Union[bool, Sequence[str]] = True,
-    # extra_widget_builders: Mapping[str, Callable[[tk.Widget], None]] = {},
-    # ):
-
-    # builder = ParameterUIBuilder(
-    #
-    #
-    #     param_type = params_type,
-    #     initial_value = initial_params,
-    #     editable_fields = editable_fields,
-    #     on_change_callback = self._on_change_callback,
-    #     # custom_constructors=extra_widget_builders,
-    #     )
-
-
-    with hold_toplevel_centered(parent) as window:
-
-        # Minimum size
-        # window.minsize(600, 300)
-        window.title(title)
-        ps_frame = builder.build_parameter_frame(window)
-        # ps_frame = build_parameter_frame(window, params_type, initial_params, editable_fields=editable_fields)
-        ps_frame.pack(fill=tk.BOTH, expand=True)
-        bottom_panel = ButtonPanel(window)
-
-        final_params = None
-
-        def on_cancel():
-            nonlocal final_params
-            final_params = None
-            window.destroy()
-
-        def on_ok():
-            nonlocal final_params
-            final_params = ps_frame.get_filled_parameters()
-            window.destroy()
-
-        def on_reset():
-            nonlocal ps_frame
-            ps_frame.pack_forget()
-            # ps_frame = build_parameter_frame(window, params_type, factory_reset_params, editable_fields=editable_fields)
-            ps_frame = builder.build_parameter_frame()
-            ps_frame.pack()
-
-        bottom_panel.pack(side=tk.BOTTOM, fill=tk.X)
-        if builder.editable_fields:
-            bottom_panel.add_button("Cancel", on_cancel, shortcut="<Escape>")
-            bottom_panel.add_button("Reset", on_reset, shortcut="<Control-r>")
-        bottom_panel.add_button("OK", on_ok, shortcut="<Return>")
-
-        if timeout is not None:
-            window.after(int(timeout * 1000), on_ok)
-        # root.mainloop()
-
-    # Trigger a Tab event in 100ms to focus the first field
-    # Focus on the window
-    window.grab_set()
-    window.after(100, lambda: window.event_generate("<Tab>"))
-
-    window.wait_window()
-    return final_params
+    """ DEPRECATED - just use the method on builder instead"""
+    return builder.open_parameter_selection_dialog(parent=parent, timeout=timeout, title=title)
 
 
 if __name__ == "__main__":
