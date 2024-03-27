@@ -56,6 +56,9 @@ def test_get_config_value():
     value = get_config_value(config_filename='.testconfigrc', section='schmapts', option='setting2')
     assert value == 'bob'
 
+    value = get_config_value(config_filename='.testconfigrc', section='opts', option='test_dir', default_generator=lambda: '/path/to/test_дir', write_default=True)
+    assert value == '/path/to/test_дir'
+
     os.remove(config_path)
 
 
