@@ -66,7 +66,7 @@ def get_config_value(config_filename, section, option, default_generator=None, w
         if not config.has_section(section):
             config.add_section(section)
         config.set(section, option, str(value))
-        with open(config_path, 'w') as f:
+        with open(config_path, 'w', encoding='utf-8') as f:
             config.write(f)
 
     if read_method == 'eval':

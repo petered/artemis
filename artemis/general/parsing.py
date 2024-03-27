@@ -9,7 +9,7 @@ def parse_time_delta_str_to_sec(time_delta_str: str) -> Optional[float]:
     else:
         start_splits = time_delta_str.split(':')
         if len(start_splits) == 1:
-            return float(time_delta_str)
+            return float(time_delta_str.rstrip('s'))
         elif len(start_splits) == 2:
             return 60 * float(start_splits[0]) + float(start_splits[1])
         elif len(start_splits) == 3:
