@@ -231,3 +231,5 @@ def sync_src_files_to_dest_files(
     else:
         print("You didn't type 'copy'")
 
+def listdir_fullpath(d):
+    return [os.path.join(d, f) for f in os.listdir(d)]
