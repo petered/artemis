@@ -11,15 +11,18 @@ def test_compute_fixed_hash():
     complex_obj = [1, 'd', {'a': 4, 'b': np.arange(10)}, (7, list(range(10)))]
     original_code = compute_fixed_hash(complex_obj)
 
-    expected_code = 'c9b83dd2e1099c3bcbb05e3c69327c72' if _IS_PYTHON_3 else '6c98fabc301361863f321f6149a8a12a'
+    expected_code = '7EZI6UBWRWA4UTXHY6EQRDPZUI' if _IS_PYTHON_3 else '6c98fabc301361863f321f6149a8a12a'
 
     assert compute_fixed_hash(complex_obj) == original_code == expected_code
     complex_obj[2]['b'][6]=0
 
-    expected_code = 'a783b1f098fca8ccaf977a3123be5ac4' if _IS_PYTHON_3 else '8aee1f739fc9a612ed72e14682026627'
+    expected_code = 'HY7ISWCVGUFJYKONSRAQ6CEXEU' if _IS_PYTHON_3 else '8aee1f739fc9a612ed72e14682026627'
     assert compute_fixed_hash(complex_obj) == expected_code != original_code
     complex_obj[2]['b'][6]=6  # Revert to old value
     assert compute_fixed_hash(complex_obj) == original_code
+
+    x = [a for a in np.array([1, 2, 3])]  # Numpy scalars previously caused a problem
+    compute_fixed_hash(x, try_objects=True)
 
 
 def test_compute_fixed_hash_terminates():
@@ -28,13 +31,13 @@ def test_compute_fixed_hash_terminates():
     b = [a]
     a.append(b)
     code = compute_fixed_hash(a)
-    assert code == 'cffaee424a62cd1893825a5811c34b8d'
+    assert code == 'Z75O4QSKMLGRRE4CLJMBDQ2LRU'
 
     c = []
     d = [c]
     c.append(d)
     code = compute_fixed_hash(c)
-    assert code == 'cffaee424a62cd1893825a5811c34b8d'
+    assert code == 'Z75O4QSKMLGRRE4CLJMBDQ2LRU'
 
 
 def test_fixed_hash_eq():

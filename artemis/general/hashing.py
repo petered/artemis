@@ -85,6 +85,8 @@ def compute_fixed_hash(obj, try_objects=False, use_only_public_fields: bool = Fa
         compute_fixed_hash(obj.get_hash_description(), **kwargs)
     elif hasattr(obj, 'memo_hashable'):  # Deprecated, just here for back-compatibility
         compute_fixed_hash(obj.memo_hashable(), **kwargs)
+    elif np.isscalar(obj):
+        _hasher.update(pickle.dumps(obj, protocol=2))
     elif try_objects:
         keys = sorted(k for k in obj.__dict__.keys() if not use_only_public_fields or not k.startswith('_'))
         for k in keys:

@@ -231,5 +231,21 @@ def sync_src_files_to_dest_files(
     else:
         print("You didn't type 'copy'")
 
+
 def listdir_fullpath(d):
     return [os.path.join(d, f) for f in os.listdir(d)]
+
+
+def walk_fullpath(path: str, enter_hidden: bool = False) -> Iterator[str]:
+    """ """
+    if os.path.isfile(path):
+        yield path
+    elif os.path.isdir(path):
+        contents = listdir_fullpath(path)
+        for f in contents:
+            if os.path.isdir(f):
+                yield from walk_fullpath(f, enter_hidden=enter_hidden)
+            elif enter_hidden or not os.path.basename(f).startswith('.'):
+                yield f
+    else:
+        raise ValueError(f"Path {path} is not a file or directory")
