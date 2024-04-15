@@ -47,7 +47,8 @@ class ZoomableImageFrame(tk.Label):
                  max_zoom: float = 40.0,
                  pan_jump_factor=0.2,  # This is relative to the display window
                  fast_pan_jump_factor=0.1,  # This is relative to the whole image
-                 mouse_scroll_speed: float = 2.0,
+                 pan_scroll_sensitivity: float = 2.0,
+                 zoom_scroll_sensitivity: float = 0.5,
                  error_handler: Optional[Callable[[ErrorDetail], None]] = tk_error_detail_handler,
                  zoom_scrolling_mode: bool = False,  # Use mouse scrollwheel to zoom,
                  after_view_change_callback: Optional[Callable[[ImageViewInfo], None]] = None,
@@ -69,7 +70,8 @@ class ZoomableImageFrame(tk.Label):
         # self.width = width
         self._nearest_neighbor_zoom_threshold = nearest_neighbor_zoom_threshold
         self._after_view_change_callback = after_view_change_callback
-        self._mouse_scroll_speed = mouse_scroll_speed
+        self._pan_scroll_sensitivity = pan_scroll_sensitivity
+        self._zoom_scroll_sensitivity = zoom_scroll_sensitivity
         self._image_view_frame: Optional[ImageViewInfo] = None
         self._recent_configured_whs: List[Tuple[int, int]] = []
         self._last_configured_wh: Optional[Tuple[int, int]] = None
@@ -253,7 +255,7 @@ class ZoomableImageFrame(tk.Label):
             if is_windows_machine() and self._zoom_scrolling_mode:
                 delta = -delta
             is_zoom_in = delta < 0
-            zoom_factor = (self._zoom_jump_factor - 1)*abs(delta)*self._mouse_scroll_speed + 1
+            zoom_factor = -(self._zoom_jump_factor - 1) * abs(delta) * self._zoom_scroll_sensitivity + 1
             rzoom = zoom_factor if is_zoom_in else 1/zoom_factor
             new_frame = self._image_view_frame.zoom_by(relative_zoom=rzoom, invariant_display_xy=self._event_to_display_xy(event), max_zoom=self._max_zoom)
 
@@ -264,7 +266,7 @@ class ZoomableImageFrame(tk.Label):
             if is_windows_machine() or event.type == EventType.MouseWheel:
                 if not is_windows_machine() and self._zoom_scrolling_mode:  # I am so confused
                     delta = -delta
-                step = -delta * self._mouse_scroll_speed
+                step = -delta * self._pan_scroll_sensitivity
                 if is_vertical_pan:
                     new_frame = self._image_view_frame.pan_by_display_shift(display_shift_xy=(0, step))
                 elif is_horizontal_pan:
