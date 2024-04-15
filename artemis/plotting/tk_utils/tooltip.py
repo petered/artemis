@@ -38,10 +38,6 @@ class ToolTip(object):
 
         x = x + self.widget.winfo_rootx() + (x_offset if right_of_cursor else -x_offset - text_width)
         y = y + cy + self.widget.winfo_rooty() + (27 if self._below_cursor else -27 - self._font_size)
-
-
-
-
         tw.wm_overrideredirect(1)
         tw.wm_geometry("+%d+%d" % (x, y))
         # Anchor window to left of cursor
@@ -51,6 +47,7 @@ class ToolTip(object):
                       background=self._background, relief=tk.SOLID, borderwidth=1,
                       font=self._font)
         label.pack(ipadx=1)
+        self.widget.after(10000, self.hidetip)  # This is a backup for cases where the tooltip fails to destroy itself
 
     def hidetip(self):
         tw = self.tipwindow
