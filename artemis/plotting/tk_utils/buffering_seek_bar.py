@@ -60,9 +60,11 @@ class BufferedSeekBar(tk.Canvas):
         if redraw:
             self.update_buffered_area()
 
-    def set_current_position(self, value: float) -> None:
+    def set_current_position(self, value: float, force_redraw: bool = False) -> None:
+        draw = force_redraw or value != self.current_value
         self.current_value = value
-        self.update_position_indicator()
+        if draw:
+            self.update_position_indicator()
 
     def get_current_position(self) -> float:
         return self.current_value
@@ -70,7 +72,6 @@ class BufferedSeekBar(tk.Canvas):
     def on_resize(self, event: tk.Event) -> None:
         self.scale_width = event.width
         self.scale_height = event.height
-        # self.draw_scale()
         self.update_buffered_area()
 
     def on_click(self, event: tk.Event) -> None:
