@@ -18,6 +18,19 @@ def parse_time_delta_str_to_sec(time_delta_str: str) -> Optional[float]:
             raise Exception(f"Bad format: {time_delta_str}")
 
 
+def format_time_delta_str(time_delta: float) -> str:
+    hours = int(time_delta // 3600)
+    minutes = int((time_delta % 3600) // 60)
+    seconds = time_delta % 60
+    if hours == 0:
+        if minutes == 0:
+            return f"{seconds:05.2f}s"
+        else:
+            return f"{minutes}:{seconds:05.2f}"
+    else:
+        return f"{hours}:{minutes:02d}:{seconds:05.2f}"
+
+
 def parse_interval(interval_str: str) -> TimeIntervalTuple:
 
     start, end = (s.strip('') for s in interval_str.split('-'))
