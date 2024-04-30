@@ -180,6 +180,7 @@ class ToggleLabel(RespectableLabel):
         self._off_text = off_text
         self._on_bg = on_bg
         self._off_bg = off_bg
+        self._is_callback_in_progress = False
         self.set_toggle_state(initial_state, call_callback=call_switch_callback_immidiately)
 
     def set_state_switch_callback(self, callback: Optional[Callable[[bool], Any]]):
@@ -190,8 +191,9 @@ class ToggleLabel(RespectableLabel):
             state = self._state_switch_pre_callback(state)
         self._state = state
         self.config(text=self._on_text if self._state else self._off_text, background=self._on_bg if self._state else self._off_bg, relief=tk.SUNKEN if self._state else tk.RAISED)
-        if self._state_switch_callback is not None and call_callback:
+        if self._state_switch_callback is not None and call_callback and not self._is_callback_in_progress:  # Avoid recursion
             try:
+                self._is_callback_in_progress = True
                 self._state_switch_callback(self._state)
             except Exception as e:
                 err = e
@@ -200,6 +202,8 @@ class ToggleLabel(RespectableLabel):
                 if self._error_handler:
                     self._error_handler(ErrorDetail(error=err, traceback=traceback_str, additional_info=f"Button: '{self.cget('text')}'"))
                 raise e
+            finally:
+                self._is_callback_in_progress = False
 
 
     def get_toggle_state(self) -> bool:
