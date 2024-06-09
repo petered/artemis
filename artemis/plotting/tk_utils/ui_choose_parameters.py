@@ -163,6 +163,31 @@ class BooleanParameterSelectionFrame(IParameterSelectionFrame[bool]):
         return {(): self.var}
 
 
+class SelectOneParameterSelectionFrame(IParameterSelectionFrame[ParametersType]):
+
+    def __init__(self, master: tk.Widget, builder: 'ParameterUIBuilder'):
+        super().__init__(master, **builder.general_kwargs)
+        self._builder = builder
+        options = builder.param_metadata.get('options', {})
+        if isinstance(options, dict):
+            self._option_to_value_map = options
+        elif isinstance(options, list):
+            self._option_to_value_map = {str(i): i for i in options}
+        else:
+            raise ValueError(f"Options must be a dict or list, not {options}")
+
+        self._value_to_option_map = {v: k for k, v in self._option_to_value_map.items()}
+        self.var = tk.StringVar(master=self, value=self._value_to_option_map.get(builder.initial_value, ''))
+        self._menu = ttk.OptionMenu(self, self.var, self.var.get(), *self._option_to_value_map.keys())
+        self._menu.grid(column=0, row=0, sticky="ew")
+
+    def get_filled_parameters(self) -> ParametersType:
+        return self._option_to_value_map.get(self.var.get())
+
+    def get_variables(self) -> Mapping[Tuple[Union[int, str], ...], tk.Variable]:
+        return {(): self.var}
+
+
 def is_fixed_size_tuple(param_type: type) -> bool:
     """
     Checks if a type is a fixed-size tuple, e.g. Tuple[int, str] or Tuple[int, str, float]
@@ -618,6 +643,8 @@ class ParameterUIBuilder:
         # param_metadata_dict = getattr(param_type, "__metadata__", {})
         if (constructor:=first((f for pattern, f in self.custom_constructors.items() if does_field_match_pattern(self.path, pattern)), None)) is not None:
             return constructor(parent, self)
+        elif param_metadata.get('options', None) is not None:
+            frame = SelectOneParameterSelectionFrame(parent, builder=self)
         elif param_type in [str, int, float, bool, datetime, timedelta]:  # It's just a single value we don't have to think about whether to break in
             if not self.is_path_matching_editable_fields():  # If we're not editing anything, just show the value
                 frame = UneditableParameterSelectionFrame(parent, builder=self)

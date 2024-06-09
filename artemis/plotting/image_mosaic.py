@@ -5,7 +5,7 @@ import numpy as np
 from artemis.general.custom_types import BGRImageArray, IndexImageArray, BGRColorTuple
 from artemis.image_processing.image_utils import DEFAULT_GAP_COLOR, create_gap_image, BGRColors
 from artemis.plotting.data_conversion import put_list_of_images_in_array, put_data_in_image_grid, put_data_in_grid
-from artemis.plotting.easy_window import put_text_in_corner
+from artemis.plotting.easy_window import put_text_in_corner, put_text_at
 
 
 def generate_image_mosaic_and_index_grid(
@@ -16,6 +16,7 @@ def generate_image_mosaic_and_index_grid(
         min_size_xy: Tuple[int, int] = (640, 480),
         padding: int = 1,
         end_text: Optional[str] = None,
+        add_index_labels: bool = False
        ) -> Tuple[BGRImageArray, IndexImageArray]:
 
     if isinstance(mosaic, Mapping):
@@ -37,6 +38,20 @@ def generate_image_mosaic_and_index_grid(
 
         image_grid = put_data_in_image_grid(image_array, grid_shape=grid_shape, fill_colour=gap_color, boundary_width=padding, min_size_xy=min_size_xy)
         id_grid = put_data_in_grid(id_array, grid_shape=grid_shape, fill_value=-1, min_size_xy=min_size_xy)
+
+    if add_index_labels and len(mosaic) > 0:
+        letter_width = 8
+
+        image_height, image_width = images[0].shape[:2]
+        n_columns = grid_shape[1] if grid_shape[1] is not None else image_grid.shape[1] // (image_width + padding)
+        y_start = max(0, min_size_xy[1]//2-len(images)*image_height//(2*n_columns))
+        margin_size = int(letter_width*np.ceil(np.log10(len(images))))
+        full_array = np.zeros((image_grid.shape[0], margin_size + image_grid.shape[1], 3), dtype=np.uint8)
+        full_array[:, margin_size:] = image_grid
+        for row_ix, i in enumerate(range(0, len(images), n_columns)):
+            put_text_at(full_array, text=f'{i:>{n_columns}}', position_xy=(margin_size, y_start+row_ix*(image_height + padding) + image_height//2), color=BGRColors.WHITE, anchor_xy=(0, 0.5))
+        id_grid = np.concatenate([np.full((id_grid.shape[0], margin_size), fill_value=-1), id_grid], axis=1)
+        image_grid = full_array
 
     if end_text is not None:
         n_added_pixels = 20

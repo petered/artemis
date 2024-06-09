@@ -303,7 +303,12 @@ class TkOptionListBuilder:
             # choicewin.quit()
             choicewin.destroy()
 
-        choicewin = tk.Toplevel() if parent is None else toplevel_centered(parent)
+        choicewin = tk.Toplevel(parent)
+        choicewin.title("Select Detection Run Specification")
+        choicewin.transient(parent)  # Set the dialog window as transient relative to the parent
+        choicewin.grab_set()  # Make the dialog modal
+
+        # choicewin = tk.Toplevel() if parent is None else toplevel_centered(parent)
         # Keep this window on top
 
         choicewin.minsize(*min_size_xy)
@@ -405,8 +410,8 @@ class TkOptionListBuilder:
             buttonfn(option_selected)
         else:
             # Get it to stay on top!
-            choicewin.attributes('-topmost', True)
-
+            # choicewin.attributes('-topmost', True)
+            choicewin.focus_force()
             choicewin.wait_window()  # With this line commented in... CRASH (exit code 0, no message)
         # choicewin.mainloop()  # With this line... NO CRASH!
         # choicewin.grab_release()
