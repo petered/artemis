@@ -4,7 +4,7 @@ import pytest
 
 from artemis.general.should_be_builtins import itermap, reducemap, separate_common_items, remove_duplicates, \
     detect_duplicates, remove_common_prefix, all_equal, get_absolute_module, insert_at, get_shifted_key_value, \
-    divide_into_subsets, entries_to_table, natural_keys, switch, seconds_to_time_marker
+    divide_into_subsets, entries_to_table, natural_keys, switch, seconds_to_time_marker, rename_duplicates
 
 __author__ = 'peter'
 
@@ -163,6 +163,19 @@ def test_seconds_to_time_marker():
     assert seconds_to_time_marker(-0.254, 3) == "-0.254"
 
     print("All tests passed!")
+
+
+
+def test_rename_duplicates():
+
+    assert (r:=rename_duplicates(['Alice', 'Bob', 'Alice', 'Carol', 'Bob', 'Alice'], rename_first=True)) \
+             == ['Alice 1', 'Bob 1', 'Alice 2', 'Carol 1', 'Bob 2', 'Alice 3'], 'Got: '+str(r)
+
+    assert (r:=rename_duplicates(['Alice', 'Bob', 'Alice', 'Carol', 'Bob', 'Alice'], rename_first=False)) \
+             == ['Alice', 'Bob', 'Alice 2', 'Carol', 'Bob 2', 'Alice 3'], 'Got: '+str(r)
+
+    assert (r := rename_duplicates(['Alice', 'Bob', 'Alice', 'Carol', 'Bob', 'Alice'], rename_first='conditional')) \
+           == ['Alice 1', 'Bob 1', 'Alice 2', 'Carol', 'Bob 2', 'Alice 3'], 'Got: ' + str(r)
 
 
 if __name__ == '__main__':

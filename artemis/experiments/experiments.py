@@ -72,6 +72,10 @@ class Experiment(object):
         """ A function that somehow displays the experiment record to the user. """
         return self._show
 
+    def show_latest_record(self):
+        """ Call the show function for the latest record, raising an error if there is not latest record """
+        return self._show(self.get_latest_record(only_completed=True, if_none='err'))
+
     @property
     def one_liner_function(self) -> Callable[[ExperimentRecord], str]:
         """ A function which summarizes the experiment result as a one-line string """

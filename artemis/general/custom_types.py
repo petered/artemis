@@ -34,6 +34,7 @@ BoolVector = np.ndarray  # A vector of floats
 LTRBBoxArray = np.ndarray  # A (N, 4) array of (left, rop, right, bottom) integer box coordinates.
 AnyImageArray = Union[BGRImageArray, GreyScaleImageArray, BGRFloatImageArray, HeatMapArray]
 PointIJArray = np.ndarray
+FeatureArray = np.ndarray  # A (N, D) array of features
 RelPointIJArray = np.ndarray  # (i, j) coordinate, normalized to (0, 1)
 
 

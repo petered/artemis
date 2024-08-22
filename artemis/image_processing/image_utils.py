@@ -305,7 +305,7 @@ def heatmap_to_color_image(heatmap: HeatMapArray, assume_zero_min: bool = True, 
         text = f'Scale: {min_heat:.2g} -> {max_heat:.2g}'
         if additional_text is not None:
             text = ', '.join([text, additional_text])
-        range_info = TextDisplayer(max_size=(img.shape[1], 15), match_max_size=True, scale=text_scale).render(text)
+        range_info = TextDisplayer(max_size=(img.shape[1], int(15*text_scale)), match_max_size=True, scale=text_scale, thickness=int(text_scale//2+1)).render(text)
         img = np.vstack([img, range_info])
     return img
 
@@ -319,10 +319,11 @@ def image_and_heatmap_to_color_image(image: BGRImageArray, heatmap: HeatMapArray
     return (image * (heatmap[:, :, None] / max_heat if max_heat != 0 else 0.)).astype(np.uint8)
 
 
-def delta_image_to_color_image(delta_image: BGRImageDeltaArray, show_range: bool = False) -> BGRImageArray:
+def delta_image_to_color_image(delta_image: BGRImageDeltaArray, show_range: bool = False, max_dev: Optional[float] = None) -> BGRImageArray:
     if delta_image.ndim == 2:
         delta_image = np.repeat(delta_image[:, :, None], axis=2, repeats=3)
-    max_dev = np.max(np.abs(delta_image))
+    if max_dev is None:
+        max_dev = np.max(np.abs(delta_image))
     img = ((delta_image * (127 / max_dev)) + 127).astype(np.uint8)
     if show_range:
         range_info = TextDisplayer(max_size=(delta_image.shape[1], 15), match_max_size=True).render(f'Scale: {-max_dev:.2g} -> {max_dev:.2g}')

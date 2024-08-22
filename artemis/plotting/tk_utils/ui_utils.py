@@ -533,6 +533,8 @@ class MultiStateToggle(ButtonPanel, Generic[MultiStateEnumType]):
                  on_state_change_callback: Optional[Callable[[MultiStateEnumType], None]] = None,
                  call_callback_immediately: bool = True,
                  pad: int = 5,
+                 forward_switch_shortcut: Optional[str] = None,
+                 backward_switch_shortcut: Optional[str] = None,
                  surround_padding: int = 0,
                  on_button_config: Optional[dict] = None,
                  off_button_config: Optional[dict] = None,
@@ -555,6 +557,16 @@ class MultiStateToggle(ButtonPanel, Generic[MultiStateEnumType]):
                             as_label=True, padx=pad, pady=pad, surround_padding=surround_padding)
         self.set_state(initial_state)
         self._on_state_change_callback = on_state_change_callback
+        if forward_switch_shortcut:
+            self.winfo_toplevel().bind(forward_switch_shortcut, lambda e: self.rotate_state(forward=True))
+        if backward_switch_shortcut:
+            self.winfo_toplevel().bind(backward_switch_shortcut, lambda e: self.rotate_state(forward=False))
+
+    def rotate_state(self, forward: bool = True):
+        states = list(type(self._active_state))
+        old_state_index = states.index(self._active_state)
+        new_state = states[(old_state_index + (1 if forward else -1)) % len(states)]
+        self.set_state(new_state)
 
     def set_state(self, state: MultiStateEnumType, skip_callback: bool = False):
         old_state = self._active_state

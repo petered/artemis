@@ -4,6 +4,8 @@ import itertools
 import os
 import re
 import math
+from typing import Iterable, Sequence
+
 from six.moves import xrange, zip_longest
 
 __author__ = 'peter'
@@ -178,6 +180,27 @@ def remove_duplicates(sequence, hashable=True, key=None, keep_last=False):
     sequence = list(sequence)
     is_dup = detect_duplicates(sequence, hashable=hashable, key=key, keep_last=keep_last)
     return (x for x, is_duplicate in zip(sequence, is_dup) if not is_duplicate)
+
+
+def rename_duplicates(names: Iterable[str], rename_first: str | bool = 'conditional', suffix: str =" {}", start_index: int = 1) -> Sequence[str]:
+    """
+    Goes through a list of names like ['Alice', 'Bob', 'Alice', 'Carol', 'Bob', 'Alice'] and renames duplicates to
+    ['Alice', 'Bob', 'Alice 2', 'Carol', 'Bob 2', 'Alice 3'] if rename_first is False
+    or ['Alice 1', 'Bob 1', 'Alice 2', 'Carol 1', 'Bob 2', 'Alice 3'] if rename_first is True
+    or ['Alice 1', 'Bob 1', 'Alice 2', 'Carol', 'Bob 2', 'Alice 3'] if rename_first == 'conditional'
+    """
+    assert rename_first in (True, False, 'conditional')
+    items = []
+    name_to_count_and_first_index = {}
+    for i, name in enumerate(names):
+        name_count, first_index = name_to_count_and_first_index.get(name, (-1+start_index, i))
+        new_name_count = name_count + 1
+        name_to_count_and_first_index[name] = new_name_count, first_index
+        new_name = f"{name}"+suffix.format(new_name_count) if rename_first is True or new_name_count > 1 else name
+        if rename_first in (True, 'conditional') and new_name_count > 1 and items[first_index] == name:
+            items[first_index] = f"{items[first_index]}" + suffix.format(start_index)
+        items.append(new_name)
+    return items
 
 
 def uniquify_duplicates(sequence_of_strings):
