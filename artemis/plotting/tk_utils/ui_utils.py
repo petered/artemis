@@ -186,11 +186,23 @@ class ToggleLabel(RespectableLabel):
     def set_state_switch_callback(self, callback: Optional[Callable[[bool], Any]]):
         self._state_switch_callback = callback
 
-    def set_toggle_state(self, state: bool, call_callback: bool = True):
+    def set_toggle_state(self, state: bool, call_callback: Optional[bool] = None):
+        """
+        Set the toggle state
+        :param state:
+        :param call_callback: Can be
+            False - Don't call the callback
+            None - Only call it if state has changed
+            True - Do call the callback
+        :return:
+        """
         if self._state_switch_pre_callback is not None:
             state = self._state_switch_pre_callback(state)
+        if call_callback is None:
+            call_callback = self._state != state
         self._state = state
         self.config(text=self._on_text if self._state else self._off_text, background=self._on_bg if self._state else self._off_bg, relief=tk.SUNKEN if self._state else tk.RAISED)
+
         if self._state_switch_callback is not None and call_callback and not self._is_callback_in_progress:  # Avoid recursion
             try:
                 self._is_callback_in_progress = True

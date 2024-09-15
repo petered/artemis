@@ -16,7 +16,7 @@ def generate_image_mosaic_and_index_grid(
         min_size_xy: Tuple[int, int] = (640, 480),
         padding: int = 1,
         end_text: Optional[str] = None,
-        add_index_labels: bool = False
+        add_index_labels: bool = False,
        ) -> Tuple[BGRImageArray, IndexImageArray]:
 
     if isinstance(mosaic, Mapping):

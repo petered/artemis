@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from artemis.general.custom_types import BGRImageArray, XYPointTuple, IJPixelTuple, HeatMapArray, XYSizeTuple, BGRColorTuple, Array, GreyScaleImageArray, BGRFloatImageArray
+from artemis.general.debug_utils import easy_profile
 from artemis.plotting.easy_window import ImageRow, ImageCol, put_text_at, put_text_in_corner
 from artemis.image_processing.image_utils import heatmap_to_color_image, BoundingBox, BGRColors, DEFAULT_GAP_COLOR, RelativeBoundingBox, TextDisplayer, put_image_in_box
 
@@ -19,9 +20,11 @@ class ImageBuilder:
     resolution: float = 1.  # In distance_unit/pix
     origin: Tuple[float, float] = (0., 0.)
     y_from_bottom: bool = False
+    force_contiguous: bool = True  # You can disable to speed this up
 
     def __post_init__(self):
-        self.image = np.ascontiguousarray(self.image)  # Some opencv functions expect this
+        if self.force_contiguous:
+            self.image = np.ascontiguousarray(self.image)  # Some opencv functions expect this
 
     def get_xlims(self) -> Tuple[float, float]:
         return self.origin[0], self.origin[0] + self.image.shape[1] / self.resolution

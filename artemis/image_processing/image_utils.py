@@ -290,7 +290,8 @@ def heatmap_to_greyscale_image(heatmap: HeatMapArray, assume_zero_min: bool = Fa
 
 
 def heatmap_to_color_image(heatmap: HeatMapArray, assume_zero_min: bool = True, assume_zero_center: bool = False, show_range=False,
-                           upsample_factor: int = 1, additional_text: Optional[str] = None, text_scale=1., heat_range: Optional[Tuple[float, float]] = None
+                           upsample_factor: int = 1, additional_text: Optional[str] = None, text_scale=1., heat_range: Optional[Tuple[float, float]] = None,
+                           invert: bool = False
                            ) -> BGRImageArray:
     min_heat, max_heat = compute_heatmap_bounds(heatmap, assume_zero_min=assume_zero_min, assume_zero_center=assume_zero_center) \
         if heat_range is None else heat_range
@@ -299,6 +300,8 @@ def heatmap_to_color_image(heatmap: HeatMapArray, assume_zero_min: bool = True, 
     img = np.zeros(heatmap.shape[:2] + (3,), dtype=np.uint8)
     if min_heat != max_heat:
         img[:] = ((heatmap - min_heat) * (255 / (max_heat - min_heat))).astype(np.uint8)
+    if invert:
+        img = 255-img
     if upsample_factor != 1:
         img = cv2.resize(img, dsize=None, fx=upsample_factor, fy=upsample_factor, interpolation=cv2.INTER_NEAREST)
     if show_range:

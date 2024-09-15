@@ -6,7 +6,7 @@ import time
 import tkinter as tk
 from contextlib import contextmanager
 from enum import Enum
-from math import copysign
+from math import copysign, ceil
 from tkinter import EventType, Event
 from typing import Optional, Tuple, Callable, Mapping, Dict, List
 
@@ -16,7 +16,10 @@ from PIL import ImageTk
 from artemis.fileman.smart_io import smart_load_image
 from artemis.general.command_registry import add_command_to_registry, NamedCommand
 from artemis.general.custom_types import BGRImageArray, BGRColorTuple
-from artemis.image_processing.image_utils import ImageViewInfo, BGRColors
+from artemis.general.debug_utils import easy_profile
+from artemis.image_processing.image_builder import ImageBuilder
+from artemis.image_processing.image_utils import ImageViewInfo, BGRColors, BoundingBox
+from artemis.plotting.tk_utils.floating_widget import OverlayFrame
 from artemis.plotting.tk_utils.machine_utils import is_windows_machine
 from artemis.plotting.tk_utils.tk_error_dialog import tk_error_detail_handler, ErrorDetail
 from artemis.plotting.tk_utils.tk_utils import bind_callbacks_to_widget
@@ -58,6 +61,7 @@ class ZoomableImageFrame(tk.Label):
                  mouse_callback: Optional[Callable[[Event, Tuple[int, int]], bool]] = None,  # Takes the event and the pixel xy
                  scroll_indicator_width_pix: int = 10,
                  rel_area_change_to_reset_zoom: float = 0.25,
+                 peek_view_timeout_ms: int = 500,
                  margin_gap: int = 4,  # Prevents infinite config-loop
                  nearest_neighbor_zoom_threshold: float = 3.0,  # Zoom level at which to switch to nearest neighbor interpolation
                  ):
@@ -69,6 +73,7 @@ class ZoomableImageFrame(tk.Label):
         # self.height = height
         # self.width = width
         self._nearest_neighbor_zoom_threshold = nearest_neighbor_zoom_threshold
+        self._peek_view_timeout_ms = peek_view_timeout_ms
         self._after_view_change_callback = after_view_change_callback
         self._pan_scroll_sensitivity = pan_scroll_sensitivity
         self._zoom_scroll_sensitivity = zoom_scroll_sensitivity
@@ -95,6 +100,9 @@ class ZoomableImageFrame(tk.Label):
         if image is not None:
             self.set_image(image)
 
+        self._zoom_overlay = OverlayFrame(self, callback=lambda: None)
+        self._last_zoom_overlay_press_time = 0
+        # self._zoom_overlay.
 
         self._binding_dict: Dict[str, Callable[[Event], None]] = {
             **(additional_canvas_callbacks or {}),
@@ -112,6 +120,8 @@ class ZoomableImageFrame(tk.Label):
                 '<A>': lambda event: self.set_image_frame(self._image_view_frame.pan_by_image_relshift(image_rel_xy=(-fast_pan_jump_factor, 0), limit=True)),
                 '<S>': lambda event: self.set_image_frame(self._image_view_frame.pan_by_image_relshift(image_rel_xy=(0, fast_pan_jump_factor), limit=True)),
                 '<D>': lambda event: self.set_image_frame(self._image_view_frame.pan_by_image_relshift(image_rel_xy=(fast_pan_jump_factor, 0), limit=True)),
+                '<e>': lambda event: self._on_peek(event),
+                '<E>': lambda event: self._on_peek(event),
                 '<Button-1>': self._on_click,  # For some reason, this is not working...
                 # '<Button-1>': lambda event: print("Single click"),  # This never gets called
                 '<Double-Button-1>': self._on_double_click,
@@ -125,10 +135,9 @@ class ZoomableImageFrame(tk.Label):
                 # Add number-pad callbacks: 5 to zoom in, 0 to zoom out, 1-9 to pan
                 "<KP_5>": lambda event: self.set_image_frame(self._image_view_frame.zoom_by(zoom_jump_factor, invariant_display_xy=self._event_to_display_xy(event))),
                 "<KP_0>": lambda event: self.set_image_frame(self._image_view_frame.zoom_by(1 / zoom_jump_factor, invariant_display_xy=self._event_to_display_xy(event))),
-                **{f"<KP_{i}>": lambda event, i=i: self.set_image_frame(self._image_view_frame.pan_by_display_relshift(display_rel_xy=(pan_jump_factor*(((i-1) % 3)-1), -pan_jump_factor*(((i-1)//3)-1)), limit=True)) for i in [1, 2, 3, 4, 6, 7, 8, 9]},
+                **{f"<KP_{i}>": lambda event, i=i: self.set_image_frame(self._image_view_frame.pan_by_display_relshift(display_rel_xy=(pan_jump_factor * (((i - 1) % 3) - 1), -pan_jump_factor * (((i - 1) // 3) - 1)), limit=True)) for i in
+                   [1, 2, 3, 4, 6, 7, 8, 9]},
                 # Add callbacks for entering/exiting focus:
-
-
 
                 # '<Double-Button-1>': double_click,
                 # '<ButtonPress-1>': lambda x: print("Single Click"),
@@ -145,6 +154,7 @@ class ZoomableImageFrame(tk.Label):
 
         bind_callbacks_to_widget(callbacks=self._binding_dict, widget=self, bind_all=False, error_handler=error_handler)
         self.bind("<1>", lambda event: self.focus_set())
+
         # self.rebind()
 
     @classmethod
@@ -157,7 +167,6 @@ class ZoomableImageFrame(tk.Label):
         root.mainloop()
 
     def _on_configure(self, event: Event):
-
 
         # Avoid getting trapped in configuration loops...
         # print(f"Configure called at {time.monotonic() % 100 :.1f}")
@@ -185,8 +194,8 @@ class ZoomableImageFrame(tk.Label):
 
         is_drag = event.type == EventType.Motion
         is_release = event.type == EventType.ButtonRelease
-        is_along_vscroll_bar = self.winfo_width()-self._scroll_indicator_width_pix <= event.x <= self.winfo_width()
-        is_along_hscroll_bar = self.winfo_height()-self._scroll_indicator_width_pix <= event.y <= self.winfo_height()
+        is_along_vscroll_bar = self.winfo_width() - self._scroll_indicator_width_pix <= event.x <= self.winfo_width()
+        is_along_hscroll_bar = self.winfo_height() - self._scroll_indicator_width_pix <= event.y <= self.winfo_height()
         if is_drag:
             if self._drag_start_display_xy is None:
                 self._drag_start_display_xy = self._event_to_display_xy(event)
@@ -194,7 +203,7 @@ class ZoomableImageFrame(tk.Label):
             else:
                 display_xy = self._event_to_display_xy(event)
                 if self._drag_start_type == DragTypes.IMAGE:
-                    display_rel_xy = self._drag_start_display_xy[0]-display_xy[0], self._drag_start_display_xy[1]-display_xy[1]
+                    display_rel_xy = self._drag_start_display_xy[0] - display_xy[0], self._drag_start_display_xy[1] - display_xy[1]
                     self._drag_start_display_xy = display_xy
                     new_frame = self._image_view_frame.pan_by_display_shift(display_shift_xy=display_rel_xy, limit=True)
                 else:
@@ -221,6 +230,32 @@ class ZoomableImageFrame(tk.Label):
             px, py = self._image_view_frame.display_xy_to_pixel_xy(display_xy)
             self._single_click_callback((int(px), int(py)))
 
+    def _on_peek(self, event: Event):
+        display_xy = (event.x, event.y)
+        pixel_xy = self._image_view_frame.display_xy_to_pixel_xy(display_xy)
+        self._last_zoom_overlay_press_time = time.monotonic()
+        if pixel_xy is not None and self._image_view_frame is not None:
+            # Zoom is 4 for e and 8 for E
+            zoom_level = (4 if event.char == event.char.lower() else 8) * self._image_view_frame.zoom_level
+            display_size_wh = self._image_view_frame.window_disply_wh
+            zoom_window_size = min(u // 4 for u in display_size_wh)
+            pixel_window_size = ceil(zoom_window_size / zoom_level)
+            crop = ImageBuilder(self._image, force_contiguous=False) \
+                .get_crop(BoundingBox.from_xywh(*pixel_xy, pixel_window_size, pixel_window_size)) \
+                .rescale_to_fit((zoom_window_size, zoom_window_size), interp=cv2.INTER_NEAREST) \
+                .get_image()
+            self._zoom_overlay.set_image(crop)
+            self._zoom_overlay.lift()
+            self.update_idletasks()
+            self._zoom_overlay.place_within_parent(display_xy=display_xy, anchor=tk.NW)
+
+        # Callback in 1s dismissing the zoom window
+        def hide_if_unpressed():
+            if time.monotonic() - self._last_zoom_overlay_press_time > self._peek_view_timeout_ms/1000:
+                self._zoom_overlay.hide()
+
+        self.after(self._peek_view_timeout_ms, hide_if_unpressed)
+
     def _on_double_click(self, event: Event):
         if self._double_click_callback is not None:
             display_xy = self._event_to_display_xy(event)
@@ -244,7 +279,7 @@ class ZoomableImageFrame(tk.Label):
         real_state = event.state & ~0x0008 if is_windows_machine() else event.state
         # print(f"Mousewheel event: {event.delta}, type: {event.type}, state: {event.state}, real_state: {real_state}, serial: {event.serial}")
         modified_scroll_state = 4 if is_windows_machine() else 8  # Command-Scroll on mac, Control-Scroll on windows
-        is_zoom_scroll = (self._zoom_scrolling_mode and real_state==0) or (not self._zoom_scrolling_mode and real_state==modified_scroll_state)
+        is_zoom_scroll = (self._zoom_scrolling_mode and real_state == 0) or (not self._zoom_scrolling_mode and real_state == modified_scroll_state)
         # print(f"Got scroll event with state {event.state} and delta {event.delta}")
         # 3 is a good empirical fudge factor on windows.
         delta = copysign(3.0, event.delta) if is_windows_machine() else event.delta
@@ -256,12 +291,12 @@ class ZoomableImageFrame(tk.Label):
                 delta = -delta
             is_zoom_in = delta < 0
             zoom_factor = -(self._zoom_jump_factor - 1) * abs(delta) * self._zoom_scroll_sensitivity + 1
-            rzoom = zoom_factor if is_zoom_in else 1/zoom_factor
+            rzoom = zoom_factor if is_zoom_in else 1 / zoom_factor
             new_frame = self._image_view_frame.zoom_by(relative_zoom=rzoom, invariant_display_xy=self._event_to_display_xy(event), max_zoom=self._max_zoom)
 
         else:
-            is_vertical_pan = (self._zoom_scrolling_mode and real_state==modified_scroll_state) or (not self._zoom_scrolling_mode and real_state==0)
-            is_horizontal_pan = real_state==1
+            is_vertical_pan = (self._zoom_scrolling_mode and real_state == modified_scroll_state) or (not self._zoom_scrolling_mode and real_state == 0)
+            is_horizontal_pan = real_state == 1
 
             if is_windows_machine() or event.type == EventType.MouseWheel:
                 if not is_windows_machine() and self._zoom_scrolling_mode:  # I am so confused
@@ -376,14 +411,14 @@ class ZoomableImageFrame(tk.Label):
         else:
 
             relative_area_change = 1. if self._last_configured_wh is None else (width * height) / (self._last_configured_wh[0] * self._last_configured_wh[1])
-            keep_old_zoom = 1/(1+self._rel_area_change_to_reset_zoom) <= relative_area_change <= 1+self._rel_area_change_to_reset_zoom
+            keep_old_zoom = 1 / (1 + self._rel_area_change_to_reset_zoom) <= relative_area_change <= 1 + self._rel_area_change_to_reset_zoom
             self._image_view_frame = self._image_view_frame.adjust_frame_and_image_size(new_image_wh=(self._image.shape[1], self._image.shape[0]), new_frame_wh=(width, height))
             if not keep_old_zoom:
                 self._image_view_frame = self._image_view_frame.zoom_out()
         disp_image = self._image_view_frame.create_display_image(self._image,
                                                                  gap_color=self._gap_color,
-                                                                 scroll_fg_color = self._scrollbar_color,
-                                                                 nearest_neighbor_zoom_threshold = self._nearest_neighbor_zoom_threshold,
+                                                                 scroll_fg_color=self._scrollbar_color,
+                                                                 nearest_neighbor_zoom_threshold=self._nearest_neighbor_zoom_threshold,
                                                                  )
         # disp_image = cv2.cvtColor(disp_image, cv2.COLOR_BGR2RGB)
         # im_resized = put_image_in_box(self._image, (self.winfo_width(), self.winfo_height()))
@@ -395,14 +430,14 @@ class ZoomableImageFrame(tk.Label):
 
 
 if __name__ == "__main__":
-
     # Get sample image from web
     import requests
     import numpy as np
     from io import BytesIO
 
-    img=smart_load_image("https://upload.wikimedia.org/wikipedia/commons/8/8a/%22Ride_the_elephant._Ride_Holy_Moses%22_LCCN2018647619.tif", use_cache=True)
+    img = smart_load_image("https://upload.wikimedia.org/wikipedia/commons/8/8a/%22Ride_the_elephant._Ride_Holy_Moses%22_LCCN2018647619.tif", use_cache=True)
     assert img is not None, "Could not load image"
+
     root = tk.Tk()
     root.geometry("800x600")
 

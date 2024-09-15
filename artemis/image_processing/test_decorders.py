@@ -16,7 +16,6 @@ def iter_frames_with_cv(path):
             break
         yield frame
 
-
 def test_pyav_decorder():
     vid_path = get_or_download_sample_video()
 
