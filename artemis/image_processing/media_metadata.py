@@ -21,6 +21,10 @@ def read_exif_data_from_path(path: str, max_bytes_to_read_for_exif: Optional[int
         return None
     if not exif_data.has_exif:
         exif_data = None
+
+    # DJI drone data accessible with something like:
+    # extra_data = extra_data: bytes = PIL.Image.open(image_path)._getexif()[37500]
+    # {k.decode(): v.rstrip(b'\x00') for x in extra_data.strip(b"[]").split(b"][") for k, v in [x.split(b":", 1)]}
     return exif_data
 
 

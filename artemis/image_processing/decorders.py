@@ -24,6 +24,9 @@ from artemis.image_processing.image_utils import fit_image_to_max_size
 
 
 class IDecorder(metaclass=ABCMeta):
+    """
+    Lets you randomly (or sequentially) access frames of video efficiently.
+    """
 
     @abstractmethod
     def __len__(self) -> int:
@@ -32,7 +35,9 @@ class IDecorder(metaclass=ABCMeta):
 
     @abstractmethod
     def __getitem__(self, item: int) -> BGRImageArray:
-        """ Lookup a frame by index.  Index should be in [-len(self), len(self)), otherwise an IndexError will be raised."""
+        """ Lookup a frame by index.  Index should be in [-len(self), len(self)), otherwise an IndexError will be raised.
+        returns a (height, width, 3) numpy array representing Blue, Green, Red pixel values.
+        """
         ...
 
     @abstractmethod
@@ -47,9 +52,6 @@ class IDecorder(metaclass=ABCMeta):
     def __iter__(self) -> Iterator[BGRImageArray]:
         """ Iterate over frames in the video (you can override this to be more efficient). """
         return iter(self[i] for i in range(len(self)))
-
-
-
 
 
 class FrameListDecorder(IDecorder):

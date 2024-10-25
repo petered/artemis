@@ -562,9 +562,11 @@ class BoundingBox(BaseBox):
     def crop_image(self, image: BGRImageArray, gap_color: BGRColorTuple = DEFAULT_GAP_COLOR):
         return slice_image_with_pad(image, xxyy_box=[int(self.x_min), int(self.x_max), int(self.y_min), int(self.y_max)], gap_color=gap_color)
 
-    def squareify(self) -> 'BoundingBox':
+    def squareify(self, min_size: Optional[float] = None) -> 'BoundingBox':
         sx, sy = self.get_center()
         size = max(self.get_xy_size())
+        if min_size:
+            size = max(size, min_size)
         return BoundingBox.from_xywh(sx, sy, size, size, label=self.label)
 
     def scale_by(self, factor: float) -> 'BoundingBox':
