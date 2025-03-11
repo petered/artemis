@@ -3,7 +3,16 @@ import matplotlib.pyplot as plt
 import logging
 import numpy as np
 import matplotlib.colors as colors
-from matplotlib.cm import register_cmap
+try:
+    from matplotlib.cm import register_cmap
+except ImportError:
+    try:
+        from matplotlib.colors import register_cmap
+    except ImportError:
+        # For newer matplotlib versions (>=3.5.0)
+        from matplotlib import colormaps
+        def register_cmap(name, cmap):
+            colormaps.register(cmap=cmap, name=name)
 from matplotlib.colors import LinearSegmentedColormap
 from si_prefix import si_format
 import matplotlib
